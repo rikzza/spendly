@@ -30,6 +30,7 @@ export default function Home() {
   const [date, setDate] = useState('')
   const [note, setNote] = useState('')
   const [loading, setLoading] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
 
   const fetchCategories = async () => {
     const { data } = await supabase.from('categories').select('*')
@@ -37,12 +38,10 @@ export default function Home() {
   }
 
   const fetchExpenses = async () => {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('expenses')
       .select('*, categories(id, name, color)')
       .order('date', { ascending: false })
-    console.log('expenses data:', data)
-    console.log('expenses error:', error)
     if (data) setExpenses(data as Expense[])
   }
 
@@ -51,24 +50,59 @@ export default function Home() {
     fetchExpenses()
   }, [])
 
+  const resetForm = () => {
+    setAmount('')
+    setCategoryId('')
+    setDate('')
+    setNote('')
+    setEditingId(null)
+  }
+
   const handleAddExpense = async () => {
     setLoading(true)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    await supabase.from('expenses').insert({
-      amount: parseFloat(amount),
-      category_id: categoryId,
-      date,
-      note,
-      user_id: user.id,
-    })
+    if (editingId) {
+      // Update existing expense
+      await supabase
+        .from('expenses')
+        .update({
+          amount: parseFloat(amount),
+          category_id: categoryId,
+          date,
+          note,
+        })
+        .eq('id', editingId)
+    } else {
+      // Insert new expense
+      await supabase.from('expenses').insert({
+        amount: parseFloat(amount),
+        category_id: categoryId,
+        date,
+        note,
+        user_id: user.id,
+      })
+    }
 
-    setAmount('')
-    setCategoryId('')
-    setDate('')
-    setNote('')
+    resetForm()
     setLoading(false)
+    fetchExpenses()
+  }
+
+  const handleEditClick = (exp: Expense) => {
+    setEditingId(exp.id)
+    setAmount(exp.amount.toString())
+    setCategoryId(exp.category_id)
+    setDate(exp.date)
+    setNote(exp.note)
+  }
+
+  const handleDelete = async (id: string) => {
+    const confirmed = window.confirm('Delete this expense?')
+    if (!confirmed) return
+
+    await supabase.from('expenses').delete().eq('id', id)
     fetchExpenses()
   }
 
@@ -86,7 +120,7 @@ export default function Home() {
         </button>
       </div>
 
-      <h2>Add Expense</h2>
+      <h2>{editingId ? 'Edit Expense' : 'Add Expense'}</h2>
       <input
         type="number"
         placeholder="Amount"
@@ -117,9 +151,14 @@ export default function Home() {
         onChange={(e) => setNote(e.target.value)}
         style={{ display: 'block', width: '100%', marginBottom: '10px', padding: '8px' }}
       />
-      <button onClick={handleAddExpense} disabled={loading} style={{ padding: '8px 16px' }}>
-        Add Expense
+      <button onClick={handleAddExpense} disabled={loading} style={{ padding: '8px 16px', marginRight: '10px' }}>
+        {editingId ? 'Save Changes' : 'Add Expense'}
       </button>
+      {editingId && (
+        <button onClick={resetForm} style={{ padding: '8px 16px' }}>
+          Cancel
+        </button>
+      )}
 
       <h2 style={{ marginTop: '30px' }}>Your Expenses</h2>
       {expenses.length === 0 && <p>No expenses yet — add your first one above.</p>}
@@ -130,6 +169,7 @@ export default function Home() {
             <th style={{ textAlign: 'left', borderBottom: '1px solid #ccc' }}>Category</th>
             <th style={{ textAlign: 'left', borderBottom: '1px solid #ccc' }}>Note</th>
             <th style={{ textAlign: 'right', borderBottom: '1px solid #ccc' }}>Amount</th>
+            <th style={{ borderBottom: '1px solid #ccc' }}></th>
           </tr>
         </thead>
         <tbody>
@@ -139,6 +179,10 @@ export default function Home() {
               <td style={{ padding: '6px 0' }}>{exp.categories?.name}</td>
               <td style={{ padding: '6px 0' }}>{exp.note}</td>
               <td style={{ padding: '6px 0', textAlign: 'right' }}>${exp.amount}</td>
+              <td style={{ padding: '6px 0', textAlign: 'right' }}>
+                <button onClick={() => handleEditClick(exp)} style={{ marginRight: '6px' }}>Edit</button>
+                <button onClick={() => handleDelete(exp.id)}>Delete</button>
+              </td>
             </tr>
           ))}
         </tbody>
