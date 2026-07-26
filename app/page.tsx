@@ -115,9 +115,14 @@ export default function Home() {
     <div style={{ maxWidth: '600px', margin: '50px auto', padding: '20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1>Spendly</h1>
-        <button onClick={handleLogout} style={{ padding: '8px 16px' }}>
-          Log Out
-        </button>
+        <div>
+          <button onClick={() => router.push('/categories')} style={{ padding: '8px 16px', marginRight: '10px' }}>
+            Categories
+          </button>
+          <button onClick={handleLogout} style={{ padding: '8px 16px' }}>
+            Log Out
+          </button>
+        </div>
       </div>
 
       <h2>{editingId ? 'Edit Expense' : 'Add Expense'}</h2>
