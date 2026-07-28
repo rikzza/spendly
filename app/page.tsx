@@ -4,12 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 
-type Category = {
-  id: string
-  name: string
-  color: string
-}
-
+type Category = { id: string; name: string; color: string }
 type Expense = {
   id: string
   amount: number
@@ -64,18 +59,11 @@ export default function Home() {
     if (!user) return
 
     if (editingId) {
-      // Update existing expense
       await supabase
         .from('expenses')
-        .update({
-          amount: parseFloat(amount),
-          category_id: categoryId,
-          date,
-          note,
-        })
+        .update({ amount: parseFloat(amount), category_id: categoryId, date, note })
         .eq('id', editingId)
     } else {
-      // Insert new expense
       await supabase.from('expenses').insert({
         amount: parseFloat(amount),
         category_id: categoryId,
@@ -99,9 +87,7 @@ export default function Home() {
   }
 
   const handleDelete = async (id: string) => {
-    const confirmed = window.confirm('Delete this expense?')
-    if (!confirmed) return
-
+    if (!window.confirm('Delete this expense?')) return
     await supabase.from('expenses').delete().eq('id', id)
     fetchExpenses()
   }
@@ -111,87 +97,126 @@ export default function Home() {
     router.push('/login')
   }
 
+  const inputClass =
+    'w-full mb-3 px-4 py-2.5 rounded-lg border border-gray-200 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent'
+
   return (
-    <div style={{ maxWidth: '600px', margin: '50px auto', padding: '20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1>Spendly</h1>
-        <div>
-          <button onClick={() => router.push('/categories')} style={{ padding: '8px 16px', marginRight: '10px' }}>
-            Categories
-          </button>
-          <button onClick={handleLogout} style={{ padding: '8px 16px' }}>
-            Log Out
-          </button>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-2xl mx-auto px-4 py-8">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-2xl font-semibold text-gray-900">Spendly</h1>
+          <div className="flex gap-2">
+            <button
+              onClick={() => router.push('/categories')}
+              className="px-4 py-2 rounded-lg text-sm font-medium text-indigo-600 border border-indigo-200 hover:bg-indigo-50 transition-colors"
+            >
+              Categories
+            </button>
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 border border-gray-200 hover:bg-gray-100 transition-colors"
+            >
+              Log Out
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            {editingId ? 'Edit Expense' : 'Add Expense'}
+          </h2>
+          <input
+            type="number"
+            placeholder="Amount"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className={inputClass}
+          />
+          <select
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            className={inputClass}
+          >
+            <option value="">Select category</option>
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.id}>{cat.name}</option>
+            ))}
+          </select>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className={inputClass}
+          />
+          <input
+            type="text"
+            placeholder="Note (optional)"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            className={inputClass}
+          />
+          <div className="flex gap-3">
+            <button
+              onClick={handleAddExpense}
+              disabled={loading}
+              className="px-5 py-2.5 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50"
+            >
+              {editingId ? 'Save Changes' : 'Add Expense'}
+            </button>
+            {editingId && (
+              <button
+                onClick={resetForm}
+                className="px-5 py-2.5 rounded-lg border border-gray-200 text-gray-600 font-medium hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Your Expenses</h2>
+          {expenses.length === 0 && (
+            <p className="text-gray-400 text-sm">No expenses yet — add your first one above.</p>
+          )}
+          {expenses.length > 0 && (
+            <div className="divide-y divide-gray-100">
+              {expenses.map((exp) => (
+                <div key={exp.id} className="flex items-center justify-between py-3">
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: exp.categories?.color }}
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        {exp.categories?.name || 'Uncategorized'}
+                        {exp.note && <span className="text-gray-400 font-normal"> · {exp.note}</span>}
+                      </p>
+                      <p className="text-xs text-gray-400">{exp.date}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-semibold text-gray-900">${exp.amount}</span>
+                    <button
+                      onClick={() => handleEditClick(exp)}
+                      className="text-xs text-indigo-600 hover:underline"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(exp.id)}
+                      className="text-xs text-red-500 hover:underline"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
-
-      <h2>{editingId ? 'Edit Expense' : 'Add Expense'}</h2>
-      <input
-        type="number"
-        placeholder="Amount"
-        value={amount}
-        onChange={(e) => setAmount(e.target.value)}
-        style={{ display: 'block', width: '100%', marginBottom: '10px', padding: '8px' }}
-      />
-      <select
-        value={categoryId}
-        onChange={(e) => setCategoryId(e.target.value)}
-        style={{ display: 'block', width: '100%', marginBottom: '10px', padding: '8px' }}
-      >
-        <option value="">Select category</option>
-        {categories.map((cat) => (
-          <option key={cat.id} value={cat.id}>{cat.name}</option>
-        ))}
-      </select>
-      <input
-        type="date"
-        value={date}
-        onChange={(e) => setDate(e.target.value)}
-        style={{ display: 'block', width: '100%', marginBottom: '10px', padding: '8px' }}
-      />
-      <input
-        type="text"
-        placeholder="Note (optional)"
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-        style={{ display: 'block', width: '100%', marginBottom: '10px', padding: '8px' }}
-      />
-      <button onClick={handleAddExpense} disabled={loading} style={{ padding: '8px 16px', marginRight: '10px' }}>
-        {editingId ? 'Save Changes' : 'Add Expense'}
-      </button>
-      {editingId && (
-        <button onClick={resetForm} style={{ padding: '8px 16px' }}>
-          Cancel
-        </button>
-      )}
-
-      <h2 style={{ marginTop: '30px' }}>Your Expenses</h2>
-      {expenses.length === 0 && <p>No expenses yet — add your first one above.</p>}
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr>
-            <th style={{ textAlign: 'left', borderBottom: '1px solid #ccc' }}>Date</th>
-            <th style={{ textAlign: 'left', borderBottom: '1px solid #ccc' }}>Category</th>
-            <th style={{ textAlign: 'left', borderBottom: '1px solid #ccc' }}>Note</th>
-            <th style={{ textAlign: 'right', borderBottom: '1px solid #ccc' }}>Amount</th>
-            <th style={{ borderBottom: '1px solid #ccc' }}></th>
-          </tr>
-        </thead>
-        <tbody>
-          {expenses.map((exp) => (
-            <tr key={exp.id}>
-              <td style={{ padding: '6px 0' }}>{exp.date}</td>
-              <td style={{ padding: '6px 0' }}>{exp.categories?.name}</td>
-              <td style={{ padding: '6px 0' }}>{exp.note}</td>
-              <td style={{ padding: '6px 0', textAlign: 'right' }}>${exp.amount}</td>
-              <td style={{ padding: '6px 0', textAlign: 'right' }}>
-                <button onClick={() => handleEditClick(exp)} style={{ marginRight: '6px' }}>Edit</button>
-                <button onClick={() => handleDelete(exp.id)}>Delete</button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
     </div>
   )
 }
