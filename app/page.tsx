@@ -26,6 +26,10 @@ export default function Home() {
   const [note, setNote] = useState('')
   const [loading, setLoading] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [filterCategory, setFilterCategory] = useState('')
+  const [filterStartDate, setFilterStartDate] = useState('')
+  const [filterEndDate, setFilterEndDate] = useState('')
+  const [searchText, setSearchText] = useState('')
 
   const fetchCategories = async () => {
     const { data } = await supabase.from('categories').select('*')
@@ -33,17 +37,27 @@ export default function Home() {
   }
 
   const fetchExpenses = async () => {
-    const { data } = await supabase
+    let query = supabase
       .from('expenses')
       .select('*, categories(id, name, color)')
       .order('date', { ascending: false })
+
+    if (filterCategory) query = query.eq('category_id', filterCategory)
+    if (filterStartDate) query = query.gte('date', filterStartDate)
+    if (filterEndDate) query = query.lte('date', filterEndDate)
+    if (searchText) query = query.ilike('note', `%${searchText}%`)
+
+    const { data } = await query
     if (data) setExpenses(data as Expense[])
   }
 
   useEffect(() => {
     fetchCategories()
-    fetchExpenses()
   }, [])
+
+  useEffect(() => {
+    fetchExpenses()
+  }, [filterCategory, filterStartDate, filterEndDate, searchText])
 
   const resetForm = () => {
     setAmount('')
@@ -176,6 +190,52 @@ export default function Home() {
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Your Expenses</h2>
+
+          <div className="flex flex-wrap gap-3 mb-5">
+            <select
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
+              className="px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="">All categories</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>{cat.name}</option>
+              ))}
+            </select>
+            <input
+              type="date"
+              value={filterStartDate}
+              onChange={(e) => setFilterStartDate(e.target.value)}
+              className="px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <input
+              type="date"
+              value={filterEndDate}
+              onChange={(e) => setFilterEndDate(e.target.value)}
+              className="px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <input
+              type="text"
+              placeholder="Search notes..."
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              className="px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            {(filterCategory || filterStartDate || filterEndDate || searchText) && (
+              <button
+                onClick={() => {
+                  setFilterCategory('')
+                  setFilterStartDate('')
+                  setFilterEndDate('')
+                  setSearchText('')
+                }}
+                className="px-3 py-2 rounded-lg text-sm text-gray-500 hover:text-gray-700"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+
           {expenses.length === 0 && (
             <p className="text-gray-400 text-sm">No expenses yet — add your first one above.</p>
           )}
